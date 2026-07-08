@@ -1,0 +1,11 @@
+{
+    "required": true,
+    "package": "com.savagelich.spawndistancebiomes.mixin",
+    "compatibilityLevel": "JAVA_21",
+    "refmap": "spawndistancebiomes.refmap.json",
+    "mixins": [
+        "MultiNoiseBiomeSourceMixin"
+    ],
+    "client": [],
+    "server": []
+}

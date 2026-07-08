@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+bin/
+
+# Minecraft run directory
+run/
+runs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Mod output
+repo/

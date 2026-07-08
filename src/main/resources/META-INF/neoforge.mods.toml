@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''
+${mod_description}
+
+Features:
+- Define distance "bands" from world spawn where specific biomes are allowed
+- Bands step outward: safe biomes near spawn, dangerous biomes far away
+- Fallback biome substitution when vanilla noise picks a banned biome
+- Works with any biome-aware mod (structures, mobs, resources)
+- Fully configurable via JSON config file
+- Per-dimension support planned
+
+This mod sits at Layer 1 of the worldgen stack (biome placement), 
+so every other mod that gates content by biome automatically inherits 
+your difficulty curve.
+'''
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
