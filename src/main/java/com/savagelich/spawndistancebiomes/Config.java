@@ -29,14 +29,25 @@ public class Config {
     // spawn_zone climate/terrain knobs (see SpawnZone)
     public static final ModConfigSpec.BooleanValue GATING_ENABLED;
     public static final ModConfigSpec.BooleanValue BIOME_SWAP;
-    public static final ModConfigSpec.IntValue RADIUS;
-    public static final ModConfigSpec.DoubleValue OCEAN_OFFSET;
-    public static final ModConfigSpec.DoubleValue FLAT_TERRAIN_SKEW;
-    public static final ModConfigSpec.DoubleValue VERTICAL_SCALE;
-    public static final ModConfigSpec.DoubleValue TEMPERATURE_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue TEMPERATURE_OFFSET;
-    public static final ModConfigSpec.DoubleValue VEGETATION_MULTIPLIER;
-    public static final ModConfigSpec.DoubleValue VEGETATION_OFFSET;
+    public static final ModConfigSpec.IntValue INNER_RADIUS;
+    public static final ModConfigSpec.IntValue OUTER_RADIUS;
+    public static final ModConfigSpec.IntValue TRANSITION;
+    public static final ModConfigSpec.IntValue BAND_TRANSITION;
+    public static final ModConfigSpec.DoubleValue NOISE_SCALE;
+    public static final ModConfigSpec.DoubleValue NOISE_STRENGTH;
+    public static final ModConfigSpec.DoubleValue INNER_OCEAN;
+    public static final ModConfigSpec.DoubleValue INNER_TEMP_MULT;
+    public static final ModConfigSpec.DoubleValue INNER_TEMP_OFF;
+    public static final ModConfigSpec.DoubleValue INNER_VEG_MULT;
+    public static final ModConfigSpec.DoubleValue INNER_VEG_OFF;
+    public static final ModConfigSpec.DoubleValue INNER_VERTICAL;
+    public static final ModConfigSpec.DoubleValue INNER_FLAT;
+    public static final ModConfigSpec.DoubleValue COLD_TEMP;
+    public static final ModConfigSpec.DoubleValue HOT_TEMP;
+    public static final ModConfigSpec.DoubleValue FLAT_VERTICAL;
+    public static final ModConfigSpec.DoubleValue MOUNTAIN_VERTICAL;
+    public static final ModConfigSpec.DoubleValue FLAT_SKEW;
+    public static final ModConfigSpec.DoubleValue MOUNTAIN_SKEW;
 
     // Default: 3 bands with elevation gating, 1 pass-through
     static final List<String> DEFAULT_SURFACE = new ArrayList<>(List.of(
@@ -88,18 +99,31 @@ public class Config {
         builder.pop();
 
         builder.push("spawn_zone").comment(
-            "Distance-gated climate/terrain shaping near world spawn.",
-            "These override Tectonic's density functions within 'radius' blocks of spawn.");
+            "Distance/direction/noise-gated climate/terrain shaping near spawn.",
+            "Inner band (0..inner_radius): temperate flat. Outer band (inner_radius..outer_radius):",
+            "four directional quadrants (NW cold+flat, NE cold+mountains, SW hot+flat, SE hot+mountains).",
+            "Beyond outer_radius the world fades back to regular Tectonic generation.");
         GATING_ENABLED = builder.comment("Master switch for distance gating.").define("gating_enabled", true);
         BIOME_SWAP = builder.comment("Whether the biome allowlist post-filter runs.").define("biome_swap", true);
-        RADIUS = builder.comment("Fade radius in blocks.").defineInRange("radius", 2048, 0, 100000);
-        OCEAN_OFFSET = builder.comment("-0.8=ocean, -0.2=coast, ~0.0=land").defineInRange("ocean_offset", 0.0, -2.0, 2.0);
-        FLAT_TERRAIN_SKEW = builder.comment("Higher = flatter terrain.").defineInRange("flat_terrain_skew", 0.8, -2.0, 2.0);
-        VERTICAL_SCALE = builder.comment("Tectonic default 1.125 (grand); lower flattens land.").defineInRange("vertical_scale", 0.35, 0.0, 4.0);
-        TEMPERATURE_MULTIPLIER = builder.comment("Compress temperature variation near spawn.").defineInRange("temperature_multiplier", 0.4, 0.0, 4.0);
-        TEMPERATURE_OFFSET = builder.comment("Shift temperature (higher = hotter).").defineInRange("temperature_offset", 0.3, -2.0, 2.0);
-        VEGETATION_MULTIPLIER = builder.comment("Compress humidity variation near spawn.").defineInRange("vegetation_multiplier", 0.4, 0.0, 4.0);
-        VEGETATION_OFFSET = builder.comment("Shift humidity (lower = drier).").defineInRange("vegetation_offset", 0.0, -2.0, 2.0);
+        INNER_RADIUS = builder.comment("Inner band radius (blocks).").defineInRange("inner_radius", 1000, 0, 100000);
+        OUTER_RADIUS = builder.comment("Outer band radius (blocks).").defineInRange("outer_radius", 1500, 0, 100000);
+        TRANSITION = builder.comment("Fade-out distance beyond outer_radius (blocks).").defineInRange("transition", 200, 1, 10000);
+        BAND_TRANSITION = builder.comment("Smooth transition distance between inner and outer band (blocks).").defineInRange("band_transition", 150, 1, 10000);
+        NOISE_SCALE = builder.comment("Noise cell size for organic boundaries (blocks).").defineInRange("noise_scale", 128.0, 1.0, 10000.0);
+        NOISE_STRENGTH = builder.comment("How much the boundary wobbles (0 = perfect circle).").defineInRange("noise_strength", 0.2, 0.0, 1.0);
+        INNER_OCEAN = builder.comment("Ocean offset everywhere in the gated zone (no oceans).").defineInRange("inner_ocean_offset", 0.0, -2.0, 2.0);
+        INNER_TEMP_MULT = builder.comment("Temperature multiplier (compress).").defineInRange("inner_temperature_multiplier", 0.4, 0.0, 4.0);
+        INNER_TEMP_OFF = builder.comment("Temperature offset (higher = hotter).").defineInRange("inner_temperature_offset", 0.3, -2.0, 2.0);
+        INNER_VEG_MULT = builder.comment("Vegetation multiplier (compress).").defineInRange("inner_vegetation_multiplier", 0.4, 0.0, 4.0);
+        INNER_VEG_OFF = builder.comment("Vegetation offset (lower = drier).").defineInRange("inner_vegetation_offset", 0.0, -2.0, 2.0);
+        INNER_VERTICAL = builder.comment("Vertical scale (lower = flatter).").defineInRange("inner_vertical_scale", 0.35, 0.0, 4.0);
+        INNER_FLAT = builder.comment("Flat terrain skew (higher = flatter).").defineInRange("inner_flat_terrain_skew", 0.8, -2.0, 2.0);
+        COLD_TEMP = builder.comment("Temperature offset in the north (cold).").defineInRange("cold_temperature_offset", -0.3, -2.0, 2.0);
+        HOT_TEMP = builder.comment("Temperature offset in the south (hot).").defineInRange("hot_temperature_offset", 0.8, -2.0, 2.0);
+        FLAT_VERTICAL = builder.comment("Vertical scale in the west (flat).").defineInRange("flat_vertical_scale", 0.35, 0.0, 4.0);
+        MOUNTAIN_VERTICAL = builder.comment("Vertical scale in the east (mountains).").defineInRange("mountain_vertical_scale", 1.0, 0.0, 4.0);
+        FLAT_SKEW = builder.comment("Flat skew in the west (flat).").defineInRange("flat_skew", 0.8, -2.0, 2.0);
+        MOUNTAIN_SKEW = builder.comment("Flat skew in the east (mountains).").defineInRange("mountain_skew", -0.5, -2.0, 2.0);
         builder.pop();
 
         SPEC = builder.build();

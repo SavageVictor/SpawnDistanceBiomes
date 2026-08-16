@@ -4,51 +4,41 @@ import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.world.level.levelgen.DensityFunction;
 
 /**
- * A leaf density function replacing Tectonic's {@code ConfigConstant} for
- * distance-gated knobs (e.g. {@code ocean_offset}, {@code flat_terrain_skew}).
+ * A leaf density function replacing Tectonic's {@code ConfigConstant} for the
+ * gated knobs. The spatial logic (bands, direction, noise) lives in
+ * {@link SpawnZone#compute}; this class just carries the knob key and the
+ * original Tectonic value.
  *
- * Blends between the player's Tectonic value and the spawn-zone target with a
- * smooth quadratic fade — no hard circular cutoff.
- *
- * Immutable and thread-safe (all fields final).
+ * Immutable and thread-safe.
  */
 public class DistanceAwareConstant implements DensityFunction {
 
+    private final String knob;
     private final double originalValue;
-    private final double nearValue;
-    private final double radius;
 
-    public DistanceAwareConstant(double originalValue, double nearValue) {
-        this(originalValue, nearValue, SpawnZone.RADIUS);
-    }
-
-    public DistanceAwareConstant(double originalValue, double nearValue, double radius) {
+    public DistanceAwareConstant(String knob, double originalValue) {
+        this.knob = knob;
         this.originalValue = originalValue;
-        this.nearValue = nearValue;
-        this.radius = radius;
     }
 
     @Override
     public double compute(FunctionContext context) {
-        double dist = SpawnZone.distance(context.blockX(), context.blockZ());
-        double fade = SpawnZone.edgeFade(dist, radius);
-        return SpawnZone.blend(originalValue, nearValue, fade);
+        return SpawnZone.compute(knob, originalValue, context.blockX(), context.blockZ());
     }
 
     @Override
     public void fillArray(double[] array, ContextProvider provider) {
-        // Value varies per position — cannot Arrays.fill.
         provider.fillAllDirectly(array, this);
     }
 
     @Override
     public double minValue() {
-        return Math.min(originalValue, nearValue);
+        return Math.min(originalValue, -2.0);
     }
 
     @Override
     public double maxValue() {
-        return Math.max(originalValue, nearValue);
+        return Math.max(originalValue, 2.0);
     }
 
     @Override

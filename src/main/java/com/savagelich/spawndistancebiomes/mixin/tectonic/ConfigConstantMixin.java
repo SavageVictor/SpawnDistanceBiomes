@@ -42,27 +42,22 @@ public class ConfigConstantMixin {
         SpawnZone.loadKnobs();
         if (!SpawnZone.GATING_ENABLED) return; // ungated baseline sampling
         String key = KEY_BY_IDENTITY.get((Object) this);
-        double near = nearValue(key);
-        if (Double.isNaN(near)) {
+        if (!isGated(key)) {
             return; // not a gated knob — let Tectonic's mapAll run unchanged
         }
         double original = ((ConfigConstant) (Object) this).value();
         if (!logged) {
             logged = true;
-            LOGGER.info("[SpawnDistanceBiomes] Tectonic config_constant '{}' intercepted "
-                + "(original={}, near={}, radius={})",
-                key, original, near, SpawnZone.RADIUS);
+            LOGGER.info("[SpawnDistanceBiomes] Tectonic config_constant '{}' intercepted (original={})", key, original);
         }
-        cir.setReturnValue(visitor.apply(new DistanceAwareConstant(original, near)));
+        cir.setReturnValue(visitor.apply(new DistanceAwareConstant(key, original)));
     }
 
-    private static double nearValue(String key) {
-        if (key == null) return Double.NaN;
+    private static boolean isGated(String key) {
+        if (key == null) return false;
         return switch (key) {
-            case "ocean_offset" -> SpawnZone.OCEAN_OFFSET_NEAR;
-            case "flat_terrain_skew" -> SpawnZone.FLAT_TERRAIN_SKEW_NEAR;
-            case "vertical_scale" -> SpawnZone.VERTICAL_SCALE_NEAR;
-            default -> Double.NaN;
+            case "ocean_offset", "flat_terrain_skew", "vertical_scale" -> true;
+            default -> false;
         };
     }
 }

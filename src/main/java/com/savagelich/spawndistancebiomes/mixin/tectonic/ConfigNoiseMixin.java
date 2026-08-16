@@ -52,37 +52,26 @@ public class ConfigNoiseMixin {
         String key = KEY_BY_IDENTITY.get((Object) this);
         ConfigNoise self = (ConfigNoise) (Object) this;
 
-        double nearMultiplier;
-        double nearOffset;
-        if ("temperature".equals(key)) {
-            nearMultiplier = SpawnZone.TEMPERATURE_MULTIPLIER_NEAR;
-            nearOffset = SpawnZone.TEMPERATURE_OFFSET_NEAR;
-        } else if ("vegetation".equals(key)) {
-            nearMultiplier = SpawnZone.VEGETATION_MULTIPLIER_NEAR;
-            nearOffset = SpawnZone.VEGETATION_OFFSET_NEAR;
-        } else {
+        if (!"temperature".equals(key) && !"vegetation".equals(key)) {
             return; // not a gated climate knob
         }
-
         if (self.smootherScaling()) {
             return; // only temperature/vegetation (non-smoother) are gated
         }
 
         if (!logged) {
             logged = true;
-            LOGGER.info("[SpawnDistanceBiomes] Tectonic config_noise '{}' intercepted "
-                + "(mult {}=>{}, offset {}=>{}, radius={})",
-                key, self.multiplier(), nearMultiplier, self.offset(), nearOffset, SpawnZone.RADIUS);
+            LOGGER.info("[SpawnDistanceBiomes] Tectonic config_noise '{}' intercepted", key);
         }
 
-        // Replicate Tectonic's non-smoother mapAll, but with distance-aware
-        // multiplier/offset constants. shiftedNoise2d replaces the ConfigNoise
-        // node (breaking any holder cycle) exactly like the original does.
+        // Replicate Tectonic's non-smoother mapAll, but with distance/direction
+        // aware multiplier/offset constants. shiftedNoise2d replaces the
+        // ConfigNoise node (breaking any holder cycle) exactly like the original.
         DensityFunction shifted = DensityFunctions.shiftedNoise2d(
             self.shiftX(), self.shiftZ(), self.scale(), self.noise().noiseData());
         DensityFunction result = DensityFunctions.add(
-            DensityFunctions.mul(shifted, new DistanceAwareConstant(self.multiplier(), nearMultiplier)),
-            new DistanceAwareConstant(self.offset(), nearOffset));
+            DensityFunctions.mul(shifted, new DistanceAwareConstant(key + "_multiplier", self.multiplier())),
+            new DistanceAwareConstant(key + "_offset", self.offset()));
         cir.setReturnValue(result.mapAll(visitor));
     }
 }
