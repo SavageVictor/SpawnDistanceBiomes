@@ -2,71 +2,84 @@ package com.savagelich.spawndistancebiomes;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Configuration for spawn-distance biome bands.
+ * Configuration for spawn-distance biome bands with elevation control.
  *
- * Each band defines a maximum distance from spawn (in blocks) and a list
- * of biomes allowed to generate within that range. Biomes not in the list
- * are replaced with the fallback.
+ * Band format (5 fields): "maxDistance;targetContinentalness;blendStrength;biomes;fallbackBiome"
+ *   maxDistance:          block distance from spawn (-1 = infinite)
+ *   targetContinentalness: terrain elevation target.
+ *     -1.0 = deep ocean floor, 0.0 = plains, 0.5 = hills, 1.0 = peaks
+ *     Use 9.0 to disable elevation gating for this band
+ *   blendStrength:        0.0 = no elevation change, 1.0 = full enforcement
+ *   biomes:               comma-separated IDs or "*" for all
+ *   fallbackBiome:        substitution when vanilla picks a banned biome
  *
- * The first band matching the query distance is used. Bands are ordered
- * from inner to outer.
+ * Old 3-field format is still supported: "maxDistance;biomes;fallbackBiome"
  */
 public class Config {
 
     public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SURFACE_BANDS;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> CAVE_BANDS;
+    public static final ModConfigSpec.IntValue SURFACE_THRESHOLD_Y;
 
-    // --- Band definitions ---
-    // Format: "maxDistance;biome1,biome2,biome3;fallback"
-    // maxDistance == 0 means "use vanilla for this band"
-    // fallback is the biome to substitute when vanilla picks a non-allowed biome
+    // Default: 3 bands with elevation gating, 1 pass-through
+    static final List<String> DEFAULT_SURFACE = new ArrayList<>(List.of(
+        // Inner: safe land biomes + natural water-edge transitions
+        "512;-0.1;1.0;0;minecraft:plains,minecraft:forest,minecraft:meadow,minecraft:river,minecraft:beach,minecraft:swamp,minecraft:sunflower_plains,minecraft:flower_forest,minecraft:birch_forest,minecraft:dark_forest,minecraft:stony_shore;minecraft:plains",
+        // Mid: moderate biomes, slightly hilly
+        "1536;0.0;0.6;0;minecraft:plains,minecraft:forest,minecraft:meadow,minecraft:river,minecraft:beach,minecraft:swamp,minecraft:taiga,minecraft:savanna,minecraft:birch_forest,minecraft:dark_forest,minecraft:sunflower_plains,minecraft:flower_forest,minecraft:stony_shore;minecraft:forest",
+        // Outer: challenging biomes, full terrain
+        "3072;9.0;0.0;0;minecraft:plains,minecraft:forest,minecraft:meadow,minecraft:river,minecraft:beach,minecraft:swamp,minecraft:taiga,minecraft:savanna,minecraft:birch_forest,minecraft:dark_forest,minecraft:jungle,minecraft:bamboo_jungle,minecraft:sparse_jungle,minecraft:badlands,minecraft:wooded_badlands,minecraft:eroded_badlands,minecraft:ice_spikes,minecraft:snowy_plains,minecraft:frozen_peaks,minecraft:jagged_peaks,minecraft:stony_peaks,minecraft:sunflower_plains,minecraft:flower_forest,minecraft:stony_shore,minecraft:cherry_grove,minecraft:snowy_taiga;minecraft:plains",
+        // Infinite: all biomes
+        "-1;9.0;0.0;0;*;minecraft:plains"
+    ));
 
-    static final List<String> DEFAULT_BANDS = List.of(
-        // Inner band (0-512 blocks): safe starter biomes
-        "512;minecraft:plains,minecraft:forest,minecraft:meadow,minecraft:river,minecraft:sunflower_plains,minecraft:flower_forest;minecraft:plains",
-        // Mid band (512-1536): moderate biomes
-        "1536;minecraft:plains,minecraft:forest,minecraft:meadow,minecraft:river,minecraft:taiga,minecraft:savanna,minecraft:swamp,minecraft:birch_forest,minecraft:dark_forest,minecraft:sunflower_plains,minecraft:flower_forest;minecraft:forest",
-        // Outer band (1536-3072): challenging biomes added
-        "3072;minecraft:plains,minecraft:forest,minecraft:meadow,minecraft:river,minecraft:taiga,minecraft:savanna,minecraft:swamp,minecraft:birch_forest,minecraft:dark_forest,minecraft:jungle,minecraft:bamboo_jungle,minecraft:sparse_jungle,minecraft:badlands,minecraft:wooded_badlands,minecraft:eroded_badlands,minecraft:ice_spikes,minecraft:snowy_plains,minecraft:frozen_peaks,minecraft:jagged_peaks,minecraft:stony_peaks,minecraft:sunflower_plains,minecraft:flower_forest;minecraft:plains",
-        // Infinite band: all overworld biomes unlocked (delegate to vanilla)
-        "-1;*;minecraft:plains"
-    );
-
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BANDS;
+    static final List<String> DEFAULT_CAVE = new ArrayList<>(List.of(
+        "-1;9.0;0.0;0;*;minecraft:plains"
+    ));
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
-        builder.comment("Spawn Distance Biomes Configuration",
-            "Each band entry format: \"maxDistance;biome1,biome2,...;fallbackBiome\"",
-            "maxDistance = block distance from spawn. -1 = infinite.",
-            "Use '*' to allow all biomes (delegates to vanilla noise).",
-            "fallbackBiome = biome used when vanilla noise picks a banned biome.",
-            "Bands are checked in order from innermost to outermost.",
-            "First matching band (where distance <= maxDistance) wins.");
+        builder.push("general");
+        SURFACE_THRESHOLD_Y = builder
+            .comment("Y-level dividing surface from underground.",
+                "Y >= threshold uses surface_bands, Y < threshold uses cave_bands.")
+            .defineInRange("surface_threshold_y", 0, -64, 320);
+        builder.pop();
 
-        BANDS = builder
-            .comment("Ordered list of biome bands from inner to outer")
-            .defineListAllowEmpty("bands", DEFAULT_BANDS, () -> "1024;minecraft:plains;minecraft:plains",
+        builder.push("surface_bands").comment(
+            "Gating for biomes at or above the surface threshold.",
+            "Format: maxDist;targetContinentalness;blendStrength;useDensityGating;biomes;fallback",
+            "  useDensityGating: 0=off, 1=on (wraps continentalness density function)",
+            "  blendStrength: 0.0=none, 1.0=full enforcement",
+            "Old 3-field format (\"maxDist;biomes;fallback\") still works.");
+
+        SURFACE_BANDS = builder
+            .comment("Ordered list of surface biome bands (inner to outer)")
+            .defineListAllowEmpty("bands", DEFAULT_SURFACE, () -> "1024;0.0;1.0;minecraft:plains;minecraft:plains",
                 Config::validateBand);
+        builder.pop();
+
+        builder.push("cave_bands").comment(
+            "Gating for biomes below the surface threshold.",
+            "Format same as surface_bands. Leave at \"-1;9.0;0.0;*;plains\" to disable.");
+
+        CAVE_BANDS = builder
+            .comment("Ordered list of cave biome bands (inner to outer)")
+            .defineListAllowEmpty("bands", DEFAULT_CAVE, () -> "-1;9.0;0.0;*;minecraft:plains",
+                Config::validateBand);
+        builder.pop();
 
         SPEC = builder.build();
     }
 
-    private static boolean validateBand(Object obj) {
-        if (!(obj instanceof String band)) return false;
-        String[] parts = band.split(";");
-        if (parts.length < 2 || parts.length > 3) return false;
-        try {
-            int maxDist = Integer.parseInt(parts[0]);
-            if (maxDist < -1) return false;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-        // biome list (parts[1]) can be "*" or a comma-separated list
-        // fallback (parts[2]) is optional, defaults to "minecraft:plains"
-        return true;
+    static boolean validateBand(Object obj) {
+        // Accept any string — format is handled by BiomeBandData.parse()
+        return obj instanceof String;
     }
 }

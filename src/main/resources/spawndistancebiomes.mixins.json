@@ -4,7 +4,9 @@
     "compatibilityLevel": "JAVA_21",
     "refmap": "spawndistancebiomes.refmap.json",
     "mixins": [
-        "MultiNoiseBiomeSourceMixin"
+        "MultiNoiseBiomeSourceMixin",
+        "NoiseBasedChunkGeneratorMixin",
+        "NoiseChunkMixin"
     ],
     "client": [],
     "server": []

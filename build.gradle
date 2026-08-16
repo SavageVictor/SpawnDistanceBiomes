@@ -21,6 +21,11 @@ base {
     archivesName = mod_id
 }
 
+repositories {
+    maven { url 'https://maven.isxander.dev/releases' }
+    maven { url 'https://api.modrinth.com/maven' }
+}
+
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 runs {
@@ -38,6 +43,13 @@ runs {
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         argument '--nogui'
+        // Headless worldgen scanner (dev-only). Enable with:
+        //   ./gradlew runServer -Psdb.scan=true -Psdb.scan.radius=1000 -Psdb.scan.step=16
+        systemProperty 'sdb.scan', (project.findProperty('sdb.scan') ?: 'false')
+        systemProperty 'sdb.scan.radius', (project.findProperty('sdb.scan.radius') ?: '5000')
+        systemProperty 'sdb.scan.step', (project.findProperty('sdb.scan.step') ?: '10')
+        systemProperty 'sdb.scan.heightStep', (project.findProperty('sdb.scan.heightStep') ?: '40')
+        systemProperty 'sdb.gating', (project.findProperty('sdb.gating') ?: 'true')
     }
 
     data {
@@ -51,6 +63,21 @@ configurations {
 
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
+
+    // Tectonic (compile-only) — we mixin into its density functions to make
+    // ocean_offset / continent scale distance-aware. Not bundled; optional at runtime.
+    compileOnly files("libs/tectonic-3.0.26-neoforge-21.1.jar")
+
+    // Dev-runtime only: load Tectonic + its deps for local runServer/runClient testing.
+    // Not shipped — real users install Tectonic themselves.
+    localRuntime files("libs/tectonic-3.0.26-neoforge-21.1.jar")
+    localRuntime "maven.modrinth:apollib:1.1.5-neoforge-21.1"
+    localRuntime "maven.modrinth:lithostitched:1.7.13-neoforge-21.1"
+
+    // YACL - Yet Another Config Library (Structurify's UI framework)
+    // Bundled into our JAR via jarJar — users don't need to install it separately
+    implementation "dev.isxander:yet-another-config-lib:${yacl_version}"
+    jarJar(group: 'dev.isxander', name: 'yet-another-config-lib', version: '3.8.2+1.21.1-neoforge')
 }
 
 tasks.withType(ProcessResources).configureEach {

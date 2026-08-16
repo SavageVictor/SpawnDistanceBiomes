@@ -17,7 +17,7 @@ build/
 .vscode/
 bin/
 
-# Minecraft run directory
+# Minecraft run directory (world saves, logs, scan output)
 run/
 runs/
 
@@ -28,3 +28,6 @@ Thumbs.db
 
 # Mod output
 repo/
+
+# Local compile-only dependency jars (Tectonic, etc.)
+libs/

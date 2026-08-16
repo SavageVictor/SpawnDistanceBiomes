@@ -1,0 +1,12 @@
+{
+    "required": false,
+    "package": "com.savagelich.spawndistancebiomes.mixin.tectonic",
+    "compatibilityLevel": "JAVA_21",
+    "plugin": "com.savagelich.spawndistancebiomes.mixin.tectonic.TectonicMixinPlugin",
+    "mixins": [
+        "ConfigConstantMixin",
+        "ConfigNoiseMixin"
+    ],
+    "client": [],
+    "server": []
+}
