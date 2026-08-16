@@ -28,7 +28,7 @@ public final class SpawnZone {
 
     // ---- band / noise geometry ----
     public static volatile double INNER_RADIUS = 1000.0;
-    public static volatile double OUTER_RADIUS = 1500.0;
+    public static volatile double OUTER_RADIUS = 2500.0;
     public static volatile double TRANSITION = 200.0;
     public static volatile double BAND_TRANSITION = 150.0;
     public static volatile double NOISE_SCALE = 128.0;

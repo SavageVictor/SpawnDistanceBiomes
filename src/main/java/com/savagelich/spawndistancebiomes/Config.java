@@ -106,7 +106,7 @@ public class Config {
         GATING_ENABLED = builder.comment("Master switch for distance gating.").define("gating_enabled", true);
         BIOME_SWAP = builder.comment("Whether the biome allowlist post-filter runs.").define("biome_swap", true);
         INNER_RADIUS = builder.comment("Inner band radius (blocks).").defineInRange("inner_radius", 1000, 0, 100000);
-        OUTER_RADIUS = builder.comment("Outer band radius (blocks).").defineInRange("outer_radius", 1500, 0, 100000);
+        OUTER_RADIUS = builder.comment("Outer band radius (blocks).").defineInRange("outer_radius", 2500, 0, 100000);
         TRANSITION = builder.comment("Fade-out distance beyond outer_radius (blocks).").defineInRange("transition", 200, 1, 10000);
         BAND_TRANSITION = builder.comment("Smooth transition distance between inner and outer band (blocks).").defineInRange("band_transition", 150, 1, 10000);
         NOISE_SCALE = builder.comment("Noise cell size for organic boundaries (blocks).").defineInRange("noise_scale", 128.0, 1.0, 10000.0);
