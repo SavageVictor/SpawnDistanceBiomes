@@ -74,6 +74,7 @@ dependencies {
     localRuntime files("libs/tectonic-3.0.26-neoforge-21.1.jar")
     localRuntime "maven.modrinth:apollib:1.1.5-neoforge-21.1"
     localRuntime "maven.modrinth:lithostitched:1.7.13-neoforge-21.1"
+    localRuntime files("libs/Terralith_1.21.1_v2.6.2_Neoforge.jar")
 
     // YACL - Yet Another Config Library (Structurify's UI framework)
     // Bundled into our JAR via jarJar — users don't need to install it separately
