@@ -21,11 +21,6 @@ public class SpawnDistanceBiomes {
 
     public SpawnDistanceBiomes(IEventBus modEventBus, ModContainer modContainer) {
         LOGGER.info("SpawnDistanceBiomes loading — biome distance gating active");
-        // Dev-only baseline: -Dsdb.gating=false disables distance gating before world load.
-        if (System.getProperty("sdb.gating", "true").equalsIgnoreCase("false")) {
-            com.savagelich.spawndistancebiomes.noise.SpawnZone.GATING_ENABLED = false;
-            LOGGER.info("SpawnDistanceBiomes gating DISABLED (sdb.gating=false)");
-        }
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, MODID + ".toml");
     }
 

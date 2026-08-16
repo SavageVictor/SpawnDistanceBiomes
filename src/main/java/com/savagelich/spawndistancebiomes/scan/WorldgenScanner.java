@@ -1,5 +1,6 @@
 package com.savagelich.spawndistancebiomes.scan;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.server.level.ServerLevel;
@@ -45,14 +46,23 @@ public class WorldgenScanner {
         BiomeSource biomeSource = generator.getBiomeSource();
         Climate.Sampler sampler = makeSampler(router, makeNoiseVisitor(randomState));
 
+        BlockPos spawn = level.getSharedSpawnPos();
+        int spawnX = spawn.getX();
+        int spawnZ = spawn.getZ();
+
         // Height first, so the biome pass can sample at the real surface Y
         // (avoids underground cave biomes leaking into the map at fixed Y).
-        double[][] heights = scanHeight(generator, level, randomState, heightStep, radius, outDir);
-        scanClimate(biomeSource, sampler, heights, heightStep, step, radius, outDir);
+        double[][] heights = scanHeight(generator, level, randomState, heightStep, radius, spawnX, spawnZ, outDir);
+        scanClimate(biomeSource, sampler, heights, heightStep, step, radius, spawnX, spawnZ, outDir);
+
+        // Regenerate the interactive viewer map from the fresh CSVs (overwrites prior).
+        ViewerGenerator.generate(outDir);
+        System.out.println("[sdb-scan] viewer.html written");
     }
 
     private static void scanClimate(BiomeSource biomeSource, Climate.Sampler sampler,
-                                    double[][] heights, int heightStep, int step, int radius, Path outDir) throws IOException {
+                                    double[][] heights, int heightStep, int step, int radius,
+                                    int spawnX, int spawnZ, Path outDir) throws IOException {
         int samples = (radius * 2) / step + 1;
 
         BufferedImage biomesImg = new BufferedImage(samples, samples, BufferedImage.TYPE_INT_RGB);
@@ -63,15 +73,15 @@ public class WorldgenScanner {
         AtomicInteger done = new AtomicInteger();
 
         IntStream.range(0, samples).parallel().forEach(zi -> {
-            int bz = -radius + zi * step;
+            int bz = spawnZ - radius + zi * step;
             int qz = QuartPos.fromBlock(bz);
-            int hj = (int) Math.round((bz + radius) / (double) heightStep);
+            int hj = (int) Math.round((bz - spawnZ + radius) / (double) heightStep);
             hj = Math.max(0, Math.min(heights.length - 1, hj));
             StringBuilder sb = new StringBuilder(1 << 12);
             for (int xi = 0; xi < samples; xi++) {
-                int bx = -radius + xi * step;
+                int bx = spawnX - radius + xi * step;
                 int qx = QuartPos.fromBlock(bx);
-                int hi = (int) Math.round((bx + radius) / (double) heightStep);
+                int hi = (int) Math.round((bx - spawnX + radius) / (double) heightStep);
                 hi = Math.max(0, Math.min(heights[0].length - 1, hi));
                 int qy = QuartPos.fromBlock((int) heights[hj][hi]);
 
@@ -106,7 +116,8 @@ public class WorldgenScanner {
     }
 
     private static double[][] scanHeight(NoiseBasedChunkGenerator generator, ServerLevel level,
-                                         RandomState randomState, int heightStep, int radius, Path outDir) throws IOException {
+                                         RandomState randomState, int heightStep, int radius,
+                                         int spawnX, int spawnZ, Path outDir) throws IOException {
         int samples = (radius * 2) / heightStep + 1;
         double[][] heights = new double[samples][samples];
         BufferedImage heightImg = new BufferedImage(samples, samples, BufferedImage.TYPE_INT_RGB);
@@ -116,10 +127,10 @@ public class WorldgenScanner {
         AtomicInteger done = new AtomicInteger();
 
         IntStream.range(0, samples).parallel().forEach(zi -> {
-            int bz = -radius + zi * heightStep;
+            int bz = spawnZ - radius + zi * heightStep;
             StringBuilder sb = new StringBuilder(samples * 12);
             for (int xi = 0; xi < samples; xi++) {
-                int bx = -radius + xi * heightStep;
+                int bx = spawnX - radius + xi * heightStep;
                 int height = generator.getBaseHeight(bx, bz, Heightmap.Types.OCEAN_FLOOR_WG, level, randomState);
                 heights[zi][xi] = height;
                 heightImg.setRGB(xi, zi, heightColor(height));

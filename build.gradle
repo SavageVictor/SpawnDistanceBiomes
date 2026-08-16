@@ -43,13 +43,14 @@ runs {
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         argument '--nogui'
-        // Headless worldgen scanner (dev-only). Enable with:
-        //   ./gradlew runServer -Psdb.scan=true -Psdb.scan.radius=1000 -Psdb.scan.step=16
-        systemProperty 'sdb.scan', (project.findProperty('sdb.scan') ?: 'false')
-        systemProperty 'sdb.scan.radius', (project.findProperty('sdb.scan.radius') ?: '5000')
-        systemProperty 'sdb.scan.step', (project.findProperty('sdb.scan.step') ?: '10')
-        systemProperty 'sdb.scan.heightStep', (project.findProperty('sdb.scan.heightStep') ?: '40')
-        systemProperty 'sdb.gating', (project.findProperty('sdb.gating') ?: 'true')
+        // Forward any -Psdb.* gradle property to the game JVM.
+        // Controls the headless scanner (sdb.scan, sdb.scan.radius, sdb.scan.step,
+        // sdb.scan.heightStep) and the climate knobs (sdb.oceanOffset, sdb.temperatureOffset,
+        // sdb.vegetationOffset, sdb.verticalScale, sdb.flatTerrainSkew, sdb.biomeSwap, ...).
+        // Example: ./gradlew runServer -Psdb.scan=true -Psdb.temperatureOffset=0.8
+        gradle.startParameter.projectProperties.each { k, v ->
+            if (k.startsWith('sdb.')) systemProperty k, v
+        }
     }
 
     data {

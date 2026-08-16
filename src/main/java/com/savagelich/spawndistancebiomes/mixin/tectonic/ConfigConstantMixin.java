@@ -1,5 +1,6 @@
 package com.savagelich.spawndistancebiomes.mixin.tectonic;
 
+import com.google.common.collect.MapMaker;
 import com.mojang.logging.LogUtils;
 import com.savagelich.spawndistancebiomes.noise.DistanceAwareConstant;
 import com.savagelich.spawndistancebiomes.noise.SpawnZone;
@@ -11,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.IdentityHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Makes Tectonic's config-backed density constants distance-aware.
@@ -25,23 +26,21 @@ import java.util.IdentityHashMap;
 public class ConfigConstantMixin {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final IdentityHashMap<Object, String> KEY_BY_IDENTITY = new IdentityHashMap<>();
+    // Identity semantics + weak keys, so ConfigConstant instances are GC-able
+    // after their world's NoiseRouter is released (no permanent leak).
+    private static final ConcurrentMap<Object, String> KEY_BY_IDENTITY =
+        new MapMaker().weakKeys().makeMap();
     private static volatile boolean logged = false;
 
     @Inject(method = "create", at = @At("RETURN"))
     private static void sdb$captureKey(String key, CallbackInfoReturnable<ConfigConstant> cir) {
-        synchronized (KEY_BY_IDENTITY) {
-            KEY_BY_IDENTITY.put(cir.getReturnValue(), key);
-        }
+        KEY_BY_IDENTITY.put(cir.getReturnValue(), key);
     }
 
     @Inject(method = "mapAll", at = @At("HEAD"), cancellable = true)
     private void sdb$mapAll(DensityFunction.Visitor visitor, CallbackInfoReturnable<DensityFunction> cir) {
         if (!SpawnZone.GATING_ENABLED) return; // ungated baseline sampling
-        String key;
-        synchronized (KEY_BY_IDENTITY) {
-            key = KEY_BY_IDENTITY.get((Object) this);
-        }
+        String key = KEY_BY_IDENTITY.get((Object) this);
         double near = nearValue(key);
         if (Double.isNaN(near)) {
             return; // not a gated knob — let Tectonic's mapAll run unchanged

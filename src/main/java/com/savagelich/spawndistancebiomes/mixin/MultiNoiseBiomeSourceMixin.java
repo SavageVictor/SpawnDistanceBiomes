@@ -45,6 +45,7 @@ public abstract class MultiNoiseBiomeSourceMixin {
     private void beforeGetNoiseBiome(int quartX, int quartY, int quartZ, Climate.Sampler sampler,
                                       CallbackInfoReturnable<Holder<Biome>> cir) {
         if (!SpawnZone.GATING_ENABLED) return; // ungated baseline sampling
+        if (!SpawnZone.BIOME_SWAP) return;     // allowlist swap disabled — climate shaping only
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
 
