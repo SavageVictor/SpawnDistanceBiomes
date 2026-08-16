@@ -1,5 +1,6 @@
 package com.savagelich.spawndistancebiomes.noise;
 
+import com.savagelich.spawndistancebiomes.Config;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -8,47 +9,50 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 /**
  * Central configuration for the distance-gated climate/terrain shaping.
  *
- * Every value is read from a system property (with a sensible default) so the
- * spawn-zone profile can be tuned from the command line without recompiling:
- *
- *   ./gradlew runServer -Psdb.temperatureOffset=0.8 -Psdb.vegetationOffset=-0.5 \
- *                        -Psdb.biomeSwap=false -Psdb.oceanOffset=0.0
- *
- * System properties (all optional, defaults shown):
- *   sdb.gating                true        master switch for distance gating
- *   sdb.biomeSwap             true        allowlist post-filter on/off
- *   sdb.radius                2048        fade radius (blocks)
- *   sdb.oceanOffset           0.0         -0.8=ocean, -0.2=coast, ~0.0=land
- *   sdb.flatTerrainSkew       0.8         higher = flatter
- *   sdb.verticalScale         0.35        Tectonic default 1.125 (grand)
- *   sdb.temperatureMultiplier 0.4         compress temperature variation
- *   sdb.temperatureOffset     0.3         shift temperature (higher = hotter)
- *   sdb.vegetationMultiplier  0.4         compress humidity variation
- *   sdb.vegetationOffset      0.0         shift humidity (lower = drier)
+ * Values are read from the NeoForge config (spawndistancebiomes.toml,
+ * [spawn_zone] section) once at first use. Edit the config file and restart —
+ * no JVM args needed. See {@link Config} for the defaults/descriptions.
  */
 public final class SpawnZone {
 
     private SpawnZone() {}
 
-    /** Master switch for distance gating. */
-    public static final boolean GATING_ENABLED = boolProp("sdb.gating", true);
+    // Defaults below are reloaded from Config on first use.
+    public static volatile boolean GATING_ENABLED = true;
+    public static volatile boolean BIOME_SWAP = true;
+    public static volatile double RADIUS = 2048.0;
+    public static volatile double OCEAN_OFFSET_NEAR = 0.0;
+    public static volatile double FLAT_TERRAIN_SKEW_NEAR = 0.8;
+    public static volatile double VERTICAL_SCALE_NEAR = 0.35;
+    public static volatile double TEMPERATURE_MULTIPLIER_NEAR = 0.4;
+    public static volatile double TEMPERATURE_OFFSET_NEAR = 0.3;
+    public static volatile double VEGETATION_MULTIPLIER_NEAR = 0.4;
+    public static volatile double VEGETATION_OFFSET_NEAR = 0.0;
 
-    /** Whether the biome allowlist post-filter runs. */
-    public static final boolean BIOME_SWAP = boolProp("sdb.biomeSwap", true);
+    private static volatile boolean knobsLoaded = false;
 
-    /** Distance (blocks) from spawn over which the spawn zone fades out. */
-    public static final double RADIUS = prop("sdb.radius", 2048.0);
-
-    // ---- ConfigConstant knobs (Tectonic ConfigState.getValue) ----
-    public static final double OCEAN_OFFSET_NEAR = prop("sdb.oceanOffset", 0.0);
-    public static final double FLAT_TERRAIN_SKEW_NEAR = prop("sdb.flatTerrainSkew", 0.8);
-    public static final double VERTICAL_SCALE_NEAR = prop("sdb.verticalScale", 0.35);
-
-    // ---- ConfigNoise knobs (Tectonic ConfigState.getNoiseState) ----
-    public static final double TEMPERATURE_MULTIPLIER_NEAR = prop("sdb.temperatureMultiplier", 0.4);
-    public static final double TEMPERATURE_OFFSET_NEAR = prop("sdb.temperatureOffset", 0.3);
-    public static final double VEGETATION_MULTIPLIER_NEAR = prop("sdb.vegetationMultiplier", 0.4);
-    public static final double VEGETATION_OFFSET_NEAR = prop("sdb.vegetationOffset", 0.0);
+    /** Loads the [spawn_zone] values from Config (idempotent, thread-safe). */
+    public static void loadKnobs() {
+        if (knobsLoaded) return;
+        synchronized (SpawnZone.class) {
+            if (knobsLoaded) return;
+            try {
+                GATING_ENABLED = Config.GATING_ENABLED.get();
+                BIOME_SWAP = Config.BIOME_SWAP.get();
+                RADIUS = Config.RADIUS.get();
+                OCEAN_OFFSET_NEAR = Config.OCEAN_OFFSET.get();
+                FLAT_TERRAIN_SKEW_NEAR = Config.FLAT_TERRAIN_SKEW.get();
+                VERTICAL_SCALE_NEAR = Config.VERTICAL_SCALE.get();
+                TEMPERATURE_MULTIPLIER_NEAR = Config.TEMPERATURE_MULTIPLIER.get();
+                TEMPERATURE_OFFSET_NEAR = Config.TEMPERATURE_OFFSET.get();
+                VEGETATION_MULTIPLIER_NEAR = Config.VEGETATION_MULTIPLIER.get();
+                VEGETATION_OFFSET_NEAR = Config.VEGETATION_OFFSET.get();
+            } catch (Throwable ignored) {
+                // config not ready — keep defaults
+            }
+            knobsLoaded = true;
+        }
+    }
 
     // ---- Spawn (real world spawn, cached for the hot path) ----
     public static volatile double spawnX = 0.0;
@@ -59,8 +63,7 @@ public final class SpawnZone {
 
     public static double distance(int blockX, int blockZ) {
         // Cache the spawn; re-check the server only every 8192 calls (handles
-        // world reloads without a per-call ServerLifecycleHooks lookup, which
-        // otherwise dominates chunk-gen time).
+        // world reloads without a per-call ServerLifecycleHooks lookup).
         if (!spawnLoaded || (++distCounter & 0x1FFF) == 0) {
             reloadSpawn();
         }
@@ -102,13 +105,5 @@ public final class SpawnZone {
     /** Linear interpolation of two values by fade (0 = original, 1 = near). */
     public static double blend(double original, double near, double fade) {
         return original * (1.0 - fade) + near * fade;
-    }
-
-    private static double prop(String key, double defaultValue) {
-        return Double.parseDouble(System.getProperty(key, Double.toString(defaultValue)));
-    }
-
-    private static boolean boolProp(String key, boolean defaultValue) {
-        return !"false".equalsIgnoreCase(System.getProperty(key, Boolean.toString(defaultValue)));
     }
 }

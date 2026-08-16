@@ -46,6 +46,7 @@ public class ConfigNoiseMixin {
 
     @Inject(method = "mapAll", at = @At("HEAD"), cancellable = true)
     private void sdb$mapAll(DensityFunction.Visitor visitor, CallbackInfoReturnable<DensityFunction> cir) {
+        SpawnZone.loadKnobs();
         if (!SpawnZone.GATING_ENABLED) return; // ungated baseline sampling
 
         String key = KEY_BY_IDENTITY.get((Object) this);

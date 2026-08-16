@@ -26,6 +26,18 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> CAVE_BANDS;
     public static final ModConfigSpec.IntValue SURFACE_THRESHOLD_Y;
 
+    // spawn_zone climate/terrain knobs (see SpawnZone)
+    public static final ModConfigSpec.BooleanValue GATING_ENABLED;
+    public static final ModConfigSpec.BooleanValue BIOME_SWAP;
+    public static final ModConfigSpec.IntValue RADIUS;
+    public static final ModConfigSpec.DoubleValue OCEAN_OFFSET;
+    public static final ModConfigSpec.DoubleValue FLAT_TERRAIN_SKEW;
+    public static final ModConfigSpec.DoubleValue VERTICAL_SCALE;
+    public static final ModConfigSpec.DoubleValue TEMPERATURE_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue TEMPERATURE_OFFSET;
+    public static final ModConfigSpec.DoubleValue VEGETATION_MULTIPLIER;
+    public static final ModConfigSpec.DoubleValue VEGETATION_OFFSET;
+
     // Default: 3 bands with elevation gating, 1 pass-through
     static final List<String> DEFAULT_SURFACE = new ArrayList<>(List.of(
         // Inner: safe land biomes + natural water-edge transitions
@@ -73,6 +85,21 @@ public class Config {
             .comment("Ordered list of cave biome bands (inner to outer)")
             .defineListAllowEmpty("bands", DEFAULT_CAVE, () -> "-1;9.0;0.0;*;minecraft:plains",
                 Config::validateBand);
+        builder.pop();
+
+        builder.push("spawn_zone").comment(
+            "Distance-gated climate/terrain shaping near world spawn.",
+            "These override Tectonic's density functions within 'radius' blocks of spawn.");
+        GATING_ENABLED = builder.comment("Master switch for distance gating.").define("gating_enabled", true);
+        BIOME_SWAP = builder.comment("Whether the biome allowlist post-filter runs.").define("biome_swap", true);
+        RADIUS = builder.comment("Fade radius in blocks.").defineInRange("radius", 2048, 0, 100000);
+        OCEAN_OFFSET = builder.comment("-0.8=ocean, -0.2=coast, ~0.0=land").defineInRange("ocean_offset", 0.0, -2.0, 2.0);
+        FLAT_TERRAIN_SKEW = builder.comment("Higher = flatter terrain.").defineInRange("flat_terrain_skew", 0.8, -2.0, 2.0);
+        VERTICAL_SCALE = builder.comment("Tectonic default 1.125 (grand); lower flattens land.").defineInRange("vertical_scale", 0.35, 0.0, 4.0);
+        TEMPERATURE_MULTIPLIER = builder.comment("Compress temperature variation near spawn.").defineInRange("temperature_multiplier", 0.4, 0.0, 4.0);
+        TEMPERATURE_OFFSET = builder.comment("Shift temperature (higher = hotter).").defineInRange("temperature_offset", 0.3, -2.0, 2.0);
+        VEGETATION_MULTIPLIER = builder.comment("Compress humidity variation near spawn.").defineInRange("vegetation_multiplier", 0.4, 0.0, 4.0);
+        VEGETATION_OFFSET = builder.comment("Shift humidity (lower = drier).").defineInRange("vegetation_offset", 0.0, -2.0, 2.0);
         builder.pop();
 
         SPEC = builder.build();
